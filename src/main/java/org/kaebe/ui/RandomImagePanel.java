@@ -1,24 +1,24 @@
-package com.kaebe.ui;
-
-import com.kaebe.Constants;
-import com.kaebe.threading.HomeAutomationThreadPool;
+package org.kaebe.ui;
 
 import javax.swing.*;
-import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-public class RandomImagePanel extends JPanel{
-
+public class RandomImagePanel extends JPanel {
     private String selectedImage;
-    public RandomImagePanel() {
+    private final String imagesPath;
+    private java.util.List<File> allImages = null;
+    private long resetAllImagesAt; // Premature optimization, turns out this wasn't causing my memory leak
+    private final JLabel label = new JLabel();
+
+    public RandomImagePanel(String imagesPath) {
+        this.imagesPath = imagesPath;
         loadImage();
-        //setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+        add(label);
 
         Timer timer = new Timer(1000 * 4, (e)->{
-            removeAll();
             loadImage();
             revalidate();
             repaint();
@@ -27,19 +27,18 @@ public class RandomImagePanel extends JPanel{
 
         addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
-                HomeAutomationThreadPool.start(()->{
+                new Thread(()->{
                     if( selectedImage != null ) {
                         //open containing folder
                         openContainingFolder(selectedImage);
-
-                        Desktop desktop = Desktop.getDesktop();
-                        try {
-                            desktop.open(new File(selectedImage));
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
+//                        Desktop desktop = Desktop.getDesktop();
+//                        try {
+//                            desktop.open(new File(selectedImage));
+//                        } catch (Exception e) {
+//                            e.printStackTrace();
+//                        }
                     }
-                });
+                }).start();
             }
         });
     }
@@ -50,7 +49,6 @@ public class RandomImagePanel extends JPanel{
     }
 
     private void openFolderAndSelectFile(String folder,String filename) {
-
         try {
             Runtime.getRuntime().exec("explorer.exe /select, " + folder + "\\" + filename);
         } catch (IOException e) {
@@ -63,31 +61,14 @@ public class RandomImagePanel extends JPanel{
         if( selectedImage == null )
             return;
 
-        JLabel label = new JLabel(new ImageIcon(selectedImage));
-        //JLabel label2 = new JLabel(selectedImage.substring(selectedImage.lastIndexOf("\\") + 1));
-        add(label);
-        //add(label2);
+        label.setIcon(new ImageIcon(selectedImage)); // This is causing a memory leak
     }
 
     private String getRandomImage() {
+        updateAllImages();
 
-        java.util.List<File> allImages = new ArrayList<>();
-        File folder = new File(Constants.StableDiffusionImagesFolderPath);
-
-        File[] dayFolders = folder.listFiles();
-        if( dayFolders != null && dayFolders.length > 0){
-
-            for( File dayFolder : dayFolders ){
-                File[] images = dayFolder.listFiles();
-                if(images != null)
-                    allImages.addAll(Arrays.asList(images));
-            }
-
-            if(!allImages.isEmpty()){
-                return allImages.get((int) (Math.random() * allImages.size())).getAbsolutePath();
-            }
-        }
-
+        if(!allImages.isEmpty())
+            return allImages.get((int) (Math.random() * allImages.size())).getAbsolutePath();
 //        File[] yearsFolders = folder.listFiles();
 //
 //        if( yearsFolders != null && yearsFolders.length > 0) {
@@ -111,7 +92,26 @@ public class RandomImagePanel extends JPanel{
 //                }
 //            }
 //        }
-
         return null;
+    }
+
+    private void updateAllImages() {
+        if( resetAllImagesAt < System.currentTimeMillis() ){ // Premature optimization, turns out this wasn't causing my memory leak
+            allImages = null;
+            resetAllImagesAt = System.currentTimeMillis() + 1000 * 60 * 10; //reset every 10 minutes
+        }
+        if( allImages == null ) {
+            allImages = new ArrayList<>();
+            File folder = new File(imagesPath);
+
+            File[] dayFolders = folder.listFiles();
+            if (dayFolders != null) {
+                for (File dayFolder : dayFolders) {
+                    File[] images = dayFolder.listFiles();
+                    if (images != null)
+                        allImages.addAll(Arrays.asList(images));
+                }
+            }
+        }
     }
 }
