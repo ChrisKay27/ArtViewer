@@ -1,5 +1,6 @@
 package org.kaebe.ui;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
@@ -11,14 +12,17 @@ public class RandomImagePanel extends JPanel {
     private final String imagesPath;
     private java.util.List<File> allImages = null;
     private long resetAllImagesAt; // Premature optimization, turns out this wasn't causing my memory leak
-    private final JLabel label = new JLabel();
+    private final ImageIcon icon = new ImageIcon();
 
     public RandomImagePanel(String imagesPath) {
         this.imagesPath = imagesPath;
         loadImage();
+
+        JLabel label = new JLabel();
+        label.setIcon(icon);
         add(label);
 
-        Timer timer = new Timer(1000 * 4, (e)->{
+        Timer timer = new Timer(4000, (e)->{
             loadImage();
             revalidate();
             repaint();
@@ -61,7 +65,15 @@ public class RandomImagePanel extends JPanel {
         if( selectedImage == null )
             return;
 
-        label.setIcon(new ImageIcon(selectedImage)); // This is causing a memory leak
+        SwingUtilities.invokeLater(()->{
+            try {
+                icon.setImage(ImageIO.read(new File(selectedImage))); // For some reason this doesn't result in a memory leak
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            //label.setIcon(new ImageIcon(selectedImage)); // This is causing a memory leak
+        });
     }
 
     private String getRandomImage() {
@@ -69,36 +81,14 @@ public class RandomImagePanel extends JPanel {
 
         if(!allImages.isEmpty())
             return allImages.get((int) (Math.random() * allImages.size())).getAbsolutePath();
-//        File[] yearsFolders = folder.listFiles();
-//
-//        if( yearsFolders != null && yearsFolders.length > 0) {
-//            File randomYearFolder = yearsFolders[(int) (Math.random() * yearsFolders.length)];
-//
-//            File[] monthFolders = randomYearFolder.listFiles();
-//
-//            if( monthFolders != null && monthFolders.length > 0) {
-//                File randomMonthFolder = monthFolders[(int) (Math.random() * monthFolders.length)];
-//
-//                File[] dayFolders = randomMonthFolder.listFiles();
-//                if( dayFolders != null && dayFolders.length > 0){
-//
-//                    File randomDayFolder = dayFolders[(int) (Math.random() * dayFolders.length)];
-//
-//                    File[] images = randomDayFolder.listFiles();
-//                    if( images != null && images.length > 0){
-//
-//                        return images[(int) (Math.random() * images.length)].getAbsolutePath();
-//                    }
-//                }
-//            }
-//        }
+
         return null;
     }
 
     private void updateAllImages() {
         if( resetAllImagesAt < System.currentTimeMillis() ){ // Premature optimization, turns out this wasn't causing my memory leak
             allImages = null;
-            resetAllImagesAt = System.currentTimeMillis() + 1000 * 60 * 10; //reset every 10 minutes
+            resetAllImagesAt = System.currentTimeMillis() + 1000 * 60; //reset every minute
         }
         if( allImages == null ) {
             allImages = new ArrayList<>();
