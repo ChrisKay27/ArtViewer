@@ -88,7 +88,7 @@ public class RandomImagePanel extends JPanel {
     private void updateAllImages() {
         if( resetAllImagesAt < System.currentTimeMillis() ){ // Premature optimization, turns out this wasn't causing my memory leak
             allImages = null;
-            resetAllImagesAt = System.currentTimeMillis() + 1000 * 60; //reset every minute
+            resetAllImagesAt = System.currentTimeMillis() + 1000 * 60 * 2; //reset every minute
         }
         if( allImages == null ) {
             allImages = new ArrayList<>();

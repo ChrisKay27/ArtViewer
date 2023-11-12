@@ -6,7 +6,7 @@ public class ImageViewerFrame extends JFrame {
     private static int count = 0;
 
     public ImageViewerFrame(String imagesPath) {
-        setTitle("SecondImageViewerFrame");
+        setTitle("ImageViewerFrame");
         setSize(1920, 1080);
 
         switch(count){
